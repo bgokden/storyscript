@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
+import ntpath
 import os
 
 import click
-import ntpath
 
 from lark.exceptions import UnexpectedCharacters, UnexpectedToken
 
@@ -26,6 +26,11 @@ class StoryError(SyntaxError):
         self.error_tuple = None
         self.with_color = True
         self.tabwidth = 2
+        if self.path:
+            head, tail = ntpath.split(self.path)
+            self.filename = tail or ntpath.basename(head)
+        else:
+            self.filename = 'story'
 
     def name(self):
         """
@@ -54,15 +59,6 @@ class StoryError(SyntaxError):
         line = self.int_line()
         return self.story.line(line)
 
-    def get_filename(self):
-        """
-        Gets the filename where error occured
-        """
-        if self.path:
-            head, tail = ntpath.split(self.path)
-            return tail or ntpath.basename(head)
-        return self.name()
-
     def header(self):
         """
         Creates the header of the message
@@ -85,7 +81,7 @@ class StoryError(SyntaxError):
                     self.error.end_column != 'None':
                 end_column = int(self.error.end_column)
             start_column = int(self.error.column)
-            filename_length = int(len(self.get_filename()))
+            filename_length = int(len(self.filename))
             start_column += filename_length + 1
             end_column += filename_length + 1
         else:
@@ -111,13 +107,15 @@ class StoryError(SyntaxError):
         """
         Creates the error highlight of the message
         """
-        filename = self.get_filename()
         line = self.int_line()
         # replace tabs for consistent error messages
         raw_line = self.get_line()
         untabbed_line = raw_line.replace('\t', ' ' * self.tabwidth)
         highlight = self.symbols(raw_line)
-        return '{}:{}|    {}\n{}'.format(filename, line, untabbed_line, highlight)
+        return '{}:{}|    {}\n{}'.format(self.filename,
+                                         line,
+                                         untabbed_line,
+                                         highlight)
 
     def error_code(self):
         """
